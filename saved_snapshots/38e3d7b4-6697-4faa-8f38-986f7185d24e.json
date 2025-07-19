@@ -1,0 +1,45 @@
+{
+  "id": "38e3d7b4-6697-4faa-8f38-986f7185d24e",
+  "timestamp": 1752952806.860824,
+  "label": "User Registration",
+  "tags": [
+    "user",
+    "registration",
+    "auth"
+  ],
+  "expected_output": {
+    "user_id": "user_123",
+    "status": "created",
+    "message": "User registered successfully"
+  },
+  "request": {
+    "path": "/api/users/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "args": {},
+    "form": {},
+    "json": {
+      "username": "john_doe",
+      "email": "john@example.com",
+      "password": "secure123"
+    }
+  },
+  "env": {
+    "python_version": "3.10.8 (tags/v3.10.8:aaaf517, Oct 11 2022, 16:50:30) [MSC v.1933 64 bit (AMD64)]",
+    "platform": "win32",
+    "environment_variables": {
+      "PATH": "C:\\Users\\benja\\Downloads\\Runtime Snapshot Debugger\\venv\\Scripts;C:\\Program Files\\Git\\usr\\local\\bin;C:\\Program Files\\Git\\bin;C:\\Program Files\\Eclipse Adoptium\\jdk-11.0.15.10-hotspot\\bin;C:\\Program Files\\Common Files\\Oracle\\Java\\javapath;C:\\Program Files (x86)\\Common Files\\Oracle\\Java\\java8path;C:\\Program Files (x86)\\Common Files\\Oracle\\Java\\javapath;C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\Wbem;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\Program Files\\Git\\cmd;C:\\Program Files\\HP\\HP One Agent;C:\\flutter\\bin;C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\Wbem;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\ProgramData\\chocolatey\\bin;C:\\Program Files\\nodejs\\;C:\\Users\\benja\\AppData\\Roaming\\npm;echo $env:USERPROFILE\\AppData\\Local\\Pub\\Cache\\bin;C:\\Program Files\\CMake\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\;C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\;C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\;C:\\Program Files\\dotnet\\;C:\\Users\\benja\\AppData\\Local\\Programs\\Python\\Python310\\Scripts\\;C:\\Users\\benja\\AppData\\Local\\Programs\\Python\\Python310\\;C:\\Users\\benja\\AppData\\Local\\Programs\\Python\\Python311\\Scripts\\;C:\\Users\\benja\\AppData\\Local\\Programs\\Python\\Python311\\;C:\\Users\\benja\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\;C:\\Users\\benja\\AppData\\Local\\Programs\\Python\\Python313\\;C:\\Users\\benja\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\benja\\Downloads\\flutter\\bin;C:\\Users\\benja\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin;C:\\Users\\benja\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\\Users\\benja\\AppData\\Roaming\\npm;C:\\Users\\benja\\AppData\\Local\\Pub\\Cache\\bin;C:\\Users\\benja\\AppData\\Local\\Google\\Cloud SDK\\google-cloud-sdk\\bin;C:\\Users\\benja\\.dotnet\\tools;c:\\Users\\benja\\.cursor\\extensions\\ms-python.debugpy-2025.8.0-win32-x64\\bundled\\scripts\\noConfigScripts"
+    },
+    "working_directory": "C:\\Users\\benja\\Downloads\\Runtime Snapshot Debugger"
+  },
+  "memory": {},
+  "logs": [],
+  "errors": [],
+  "debug_info": {
+    "total_requests": 0,
+    "total_errors": 0,
+    "session_duration": 0.0
+  }
+}

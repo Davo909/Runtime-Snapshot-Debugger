@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Snapshot Debugger</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <h1>📸 Snapshot Debugger</h1>
+
+  <!-- Debug Panel -->
+  <div class="debug-panel">
+    <h2>🐛 Debug Panel</h2>
+    <div class="debug-stats">
+      <div class="stat-item">
+        <span class="stat-label">Total Requests:</span>
+        <span id="total-requests">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Total Errors:</span>
+        <span id="total-errors">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Error Rate:</span>
+        <span id="error-rate">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Uptime:</span>
+        <span id="uptime">-</span>
+      </div>
+    </div>
+    
+    <div class="debug-actions">
+      <button onclick="showRecentErrors()">🔍 Recent Errors</button>
+      <button onclick="showRecentRequests()">📋 Recent Requests</button>
+      <button onclick="showDebugStats()">📊 Debug Stats</button>
+      <button onclick="clearLogs()">🗑️ Clear Logs</button>
+      <button onclick="exportLogs()">📤 Export Logs</button>
+    </div>
+    
+    <div id="debug-content" class="debug-content"></div>
+  </div>
+
+  <button onclick="toggleManualForm()">➕ Create Snapshot</button>
+  <div id="manual-form" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; border-radius: 6px; background: #fff;">
+    <label>Label:</label><br>
+    <input type="text" id="manual-label" /><br><br>
+
+    <label>Path:</label><br>
+    <input type="text" id="manual-path" placeholder="/api/example" /><br><br>
+
+    <label>JSON Body:</label><br>
+    <textarea id="manual-body" rows="4" style="width: 100%; font-family: monospace;"></textarea><br><br>
+
+    <label>Tags (comma-separated):</label><br>
+    <input type="text" id="manual-tags" /><br><br>
+
+    <button onclick="submitManualSnapshot()">📥 Save Snapshot</button>
+    <button onclick="toggleManualForm()">Cancel</button>
+  </div>
+
+  <hr style="margin: 2rem 0;">
+
+  <label for="tagFilter">Filter by Tag:</label>
+  <select id="tagFilter" onchange="applyFilters()">
+    <option value="__ALL__">All</option>
+  </select>
+
+  <label for="dateFrom">From:</label>
+  <input type="date" id="dateFrom" onchange="applyFilters()" />
+
+  <label for="dateTo">To:</label>
+  <input type="date" id="dateTo" onchange="applyFilters()" />
+
+  <input type="text" id="searchBox" placeholder="Search by label, path, or tag..." oninput="applyFilters()" />
+
+  <div id="snapshot-list">Loading snapshots...</div>
+
+  <script>
+    let allSnapshots = [];
+
+    // Auto-refresh debug stats
+    setInterval(updateDebugStats, 5000);
+
+    async function updateDebugStats() {
+      try {
+        const res = await fetch('/debug/stats');
+        const stats = await res.json();
+        
+        document.getElementById('total-requests').textContent = stats.total_requests;
+        document.getElementById('total-errors').textContent = stats.total_errors;
+        document.getElementById('error-rate').textContent = stats.error_rate.toFixed(1) + '%';
+        document.getElementById('uptime').textContent = formatUptime(stats.uptime);
+      } catch (e) {
+        console.error('Failed to update debug stats:', e);
+      }
+    }
+
+    function formatUptime(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${hours}h ${minutes}m ${secs}s`;
+    }
+
+    async function showRecentErrors() {
+      const res = await fetch('/debug/errors');
+      const data = await res.json();
+      const content = document.getElementById('debug-content');
+      
+      let html = '<h3>Recent Errors</h3>';
+      if (data.errors.length === 0) {
+        html += '<p>✅ No errors recorded!</p>';
+      } else {
+        data.errors.forEach(error => {
+          html += `
+            <div class="error-item">
+              <div class="error-header">
+                <strong>${error.error_type}</strong> - ${error.error_message}
+              </div>
+              <div class="error-tip">
+                💡 <strong>Debug Tip:</strong> ${error.debug_tip}
+              </div>
+              <div class="error-details">
+                <small>Path: ${error.request_path || 'N/A'} | Method: ${error.request_method || 'N/A'}</small>
+                <pre class="error-traceback">${error.traceback}</pre>
+              </div>
+            </div>
+          `;
+        });
+      }
+      content.innerHTML = html;
+    }
+
+    async function showRecentRequests() {
+      const res = await fetch('/debug/requests');
+      const data = await res.json();
+      const content = document.getElementById('debug-content');
+      
+      let html = '<h3>Recent Requests</h3>';
+      if (data.requests.length === 0) {
+        html += '<p>No requests recorded yet.</p>';
+      } else {
+        data.requests.slice(-10).reverse().forEach(req => {
+          const timestamp = new Date(req.timestamp * 1000).toLocaleTimeString();
+          html += `
+            <div class="request-item">
+              <div class="request-header">
+                <strong>${req.method}</strong> ${req.path} - ${timestamp}
+              </div>
+              <div class="request-details">
+                <small>IP: ${req.ip} | User-Agent: ${req.user_agent}</small>
+                ${req.json ? `<pre class="request-body">${JSON.stringify(req.json, null, 2)}</pre>` : ''}
+              </div>
+            </div>
+          `;
+        });
+      }
+      content.innerHTML = html;
+    }
+
+    async function showDebugStats() {
+      const res = await fetch('/debug/stats');
+      const stats = await res.json();
+      const content = document.getElementById('debug-content');
+      
+      let html = '<h3>Debug Statistics</h3>';
+      html += `
+        <div class="stats-grid">
+          <div class="stat-box">
+            <h4>Most Common Errors</h4>
+            ${stats.most_common_errors.map(([error, count]) => 
+              `<div>${error}: ${count} times</div>`
+            ).join('')}
+          </div>
+          <div class="stat-box">
+            <h4>Most Common Paths</h4>
+            ${stats.most_common_paths.map(([path, count]) => 
+              `<div>${path}: ${count} requests</div>`
+            ).join('')}
+          </div>
+        </div>
+      `;
+      content.innerHTML = html;
+    }
+
+    async function clearLogs() {
+      if (!confirm('Are you sure you want to clear all logs?')) return;
+      
+      const res = await fetch('/debug/clear-logs', { method: 'POST' });
+      if (res.ok) {
+        alert('✅ Logs cleared');
+        updateDebugStats();
+        document.getElementById('debug-content').innerHTML = '<p>Logs cleared</p>';
+      } else {
+        alert('❌ Failed to clear logs');
+      }
+    }
+
+    async function exportLogs() {
+      window.location.href = '/debug/export-logs';
+    }
+
+    async function fetchSnapshots() {
+      const res = await fetch('/snapshots');
+      allSnapshots = await res.json();
+      updateTagDropdown();
+      renderSnapshots(allSnapshots);
+    }
+
+    function updateTagDropdown() {
+      const tagSet = new Set();
+      allSnapshots.forEach(snap => (snap.tags || []).forEach(tag => tagSet.add(tag)));
+      const dropdown = document.getElementById("tagFilter");
+      dropdown.innerHTML = '<option value="__ALL__">All</option>';
+      Array.from(tagSet).sort().forEach(tag => {
+        const opt = document.createElement("option");
+        opt.value = tag;
+        opt.textContent = tag;
+        dropdown.appendChild(opt);
+      });
+    }
+
+    function applyFilters() {
+      const tag = document.getElementById("tagFilter").value;
+      const search = document.getElementById("searchBox").value.toLowerCase();
+      const from = document.getElementById("dateFrom").value;
+      const to = document.getElementById("dateTo").value;
+
+      let filtered = [...allSnapshots];
+
+      if (tag !== "__ALL__") {
+        filtered = filtered.filter(s => s.tags.includes(tag));
+      }
+      if (search) {
+        filtered = filtered.filter(s =>
+          s.label.toLowerCase().includes(search) ||
+          s.path.toLowerCase().includes(search) ||
+          s.tags.join(',').toLowerCase().includes(search)
+        );
+      }
+      if (from) {
+        const ts = new Date(from).getTime() / 1000;
+        filtered = filtered.filter(s => s.timestamp >= ts);
+      }
+      if (to) {
+        const ts = new Date(to).getTime() / 1000;
+        filtered = filtered.filter(s => s.timestamp <= ts);
+      }
+
+      renderSnapshots(filtered);
+    }
+
+    function renderSnapshots(snapshots) {
+      const container = document.getElementById("snapshot-list");
+      container.innerHTML = snapshots.length ? "" : "<p>No snapshots found.</p>";
+
+      snapshots.forEach(snap => {
+        const div = document.createElement("div");
+        div.className = "snapshot";
+
+        const date = new Date(snap.timestamp * 1000).toLocaleString();
+        const tagText = snap.tags.length ? `Tags: ${snap.tags.join(', ')}` : 'No tags';
+        const errorIndicator = snap.has_errors ? `⚠️ ${snap.error_count} errors` : '';
+
+        div.innerHTML = `
+          <strong>ID:</strong> ${snap.id}<br>
+          <strong>Label:</strong> ${snap.label}<br>
+          <strong>Route:</strong> ${snap.path}<br>
+          <strong>Time:</strong> ${date}<br>
+          <div class="tags">${tagText}</div>
+          ${errorIndicator ? `<div class="error-indicator">${errorIndicator}</div>` : ''}
+          <button onclick="viewSnapshot('${snap.id}')">View</button>
+          <button onclick="replaySnapshot('${snap.id}')">Replay</button>
+          <button onclick="compareSnapshot('${snap.id}')">Compare</button>
+          <button onclick="exportSnapshot('${snap.id}')">Export</button>
+          <button onclick="generateTest('${snap.id}')">Generate Test</button>
+          <button onclick="deleteSnapshot('${snap.id}')">🗑 Delete</button>
+          <div class="tag-input">
+            <input type="text" id="tag-${snap.id}" placeholder="Add tag..." />
+            <button onclick="addTag('${snap.id}')">Add Tag</button>
+          </div>
+          <div class="expected-box">
+            <label for="expected-${snap.id}">Expected Output (JSON):</label><br/>
+            <textarea id="expected-${snap.id}" rows="4" style="width: 100%; font-family: monospace;"></textarea>
+            <button onclick="saveExpected('${snap.id}')">Save Expected</button>
+          </div>
+          <div id="details-${snap.id}" style="margin-top: 0.7rem;"></div>
+        `;
+
+        container.appendChild(div);
+      });
+    }
+
+    function toggleManualForm() {
+      const form = document.getElementById("manual-form");
+      form.style.display = form.style.display === "none" ? "block" : "none";
+    }
+
+    async function submitManualSnapshot() {
+      const label = document.getElementById("manual-label").value;
+      const path = document.getElementById("manual-path").value;
+      const tags = document.getElementById("manual-tags").value.split(',').map(t => t.trim()).filter(Boolean);
+      let json;
+
+      try {
+        json = JSON.parse(document.getElementById("manual-body").value);
+      } catch (e) {
+        alert("❌ Invalid JSON body.");
+        return;
+      }
+
+      const res = await fetch('/snapshot/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, path, tags, json })
+      });
+
+      if (res.ok) {
+        alert("✅ Snapshot created.");
+        toggleManualForm();
+        fetchSnapshots();
+      } else {
+        alert("❌ Failed to create snapshot.");
+      }
+    }
+
+    async function viewSnapshot(id) {
+      const res = await fetch(`/snapshot/${id}`);
+      const data = await res.json();
+      const details = document.getElementById(`details-${id}`);
+      details.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      document.getElementById(`expected-${id}`).value = JSON.stringify(data.expected_output || {}, null, 2);
+    }
+
+    async function replaySnapshot(id) {
+      const res = await fetch(`/snapshot/${id}/replay`, { method: 'POST' });
+      const result = await res.json();
+      const details = document.getElementById(`details-${id}`);
+      const matchText = result.match ? "✅ Output matched expected." : "❌ Output did NOT match.";
+      const color = result.match ? "green" : "red";
+
+      details.innerHTML = `
+        <div style="color: ${color}; font-weight: bold;">${matchText}</div>
+        <pre>${JSON.stringify(result.replayed_state, null, 2)}</pre>
+        ${result.expected_output ? `<div><strong>Expected:</strong><pre>${JSON.stringify(result.expected_output, null, 2)}</pre></div>` : ""}
+      `;
+    }
+
+    async function compareSnapshot(id) {
+      const res = await fetch(`/snapshot/${id}/compare`, { method: 'POST' });
+      const result = await res.json();
+      const details = document.getElementById(`details-${id}`);
+
+      details.innerHTML = `
+        <div class="diff">
+          <div><strong>Original State</strong><pre>${JSON.stringify(result.original_memory_state, null, 2)}</pre></div>
+          <div><strong>Simulated Response</strong><pre>${JSON.stringify(result.simulated_new_response, null, 2)}</pre></div>
+        </div>
+      `;
+    }
+
+    async function exportSnapshot(id) {
+      window.location.href = `/snapshot/${id}/export`;
+    }
+
+    async function generateTest(id) {
+      window.location.href = `/snapshot/${id}/generate-test`;
+    }
+
+    async function deleteSnapshot(id) {
+      const confirmed = confirm("Are you sure you want to delete this snapshot?");
+      if (!confirmed) return;
+
+      const res = await fetch(`/snapshot/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        alert("✅ Snapshot deleted.");
+        fetchSnapshots();
+      } else {
+        alert("❌ Could not delete snapshot.");
+      }
+    }
+
+    async function addTag(id) {
+      const input = document.getElementById(`tag-${id}`);
+      const tag = input.value.trim();
+      if (!tag) return;
+
+      const res = await fetch(`/snapshot/${id}/tag`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags: [tag] })
+      });
+
+      if (res.ok) {
+        input.value = '';
+        fetchSnapshots();
+      } else {
+        alert("Failed to add tag.");
+      }
+    }
+
+    async function saveExpected(id) {
+      const text = document.getElementById(`expected-${id}`).value.trim();
+      if (!text) return;
+      try {
+        const json = JSON.parse(text);
+        await fetch(`/snapshot/${id}/expected`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ expected_output: json })
+        });
+        alert("✅ Expected output saved.");
+      } catch (e) {
+        alert("❌ Invalid JSON.");
+      }
+    }
+
+    // Initialize
+    fetchSnapshots();
+    updateDebugStats();
+  </script>
+</body>
+</html>
